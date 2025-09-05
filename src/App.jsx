@@ -14,18 +14,18 @@ import {
   Eye,
   BarChart3
 } from 'lucide-react';
-import { Toaster } from '@/components/ui/toaster';
-import { useToast } from '@/components/ui/use-toast';
-import Dashboard from '@/components/Dashboard.jsx';
-import TrafficMap from '@/components/TrafficMap.jsx';
-import LiveGoogleMap from '@/components/LiveGoogleMap.jsx';
-import WorkingMapAlternative from '@/components/WorkingMapAlternative.jsx';
-import EmergencyDetection from '@/components/EmergencyDetection.jsx';
-import SignalControl from '@/components/signal-control/SignalControl.jsx';
-import Analytics from '@/components/analytics/Analytics.jsx';
-import AdminPanel from '@/components/AdminPanel.jsx';
-import Sidebar from '@/components/layout/Sidebar.jsx';
-import { getInitialSignals } from '@/lib/signal-logic';
+import { Toaster } from './components/ui/toaster.jsx';
+import { useToast } from './components/ui/use-toast.js';
+import Dashboard from './components/Dashboard.jsx';
+import TrafficMap from './components/TrafficMap.jsx';
+import LiveGoogleMap from './components/LiveGoogleMap.jsx';
+import WorkingMapAlternative from './components/WorkingMapAlternative.jsx';
+import EmergencyDetection from './components/EmergencyDetection.jsx';
+import SignalControl from './components/signal-control/SignalControl.jsx';
+import Analytics from './components/analytics/Analytics.jsx';
+import AdminPanel from './components/AdminPanel.jsx';
+import Sidebar from './components/layout/Sidebar.jsx';
+import { getInitialSignals } from './lib/signal-logic.js';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
