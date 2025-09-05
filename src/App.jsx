@@ -12,7 +12,11 @@ import {
   Navigation,
   Radio,
   Eye,
-  BarChart3
+  BarChart3,
+  Camera,
+  Brain,
+  Cloud,
+  Zap
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/components/ui/use-toast';
@@ -25,6 +29,12 @@ import SignalControl from '@/components/signal-control/SignalControl.jsx';
 import Analytics from '@/components/analytics/Analytics.jsx';
 import AdminPanel from '@/components/AdminPanel.jsx';
 import Sidebar from '@/components/layout/Sidebar.jsx';
+import CameraFeed from '@/components/CameraFeed.jsx';
+import WeatherIntegration from '@/components/WeatherIntegration.jsx';
+import CameraEmergencyDetection from '@/components/CameraEmergencyDetection.jsx';
+import MLTrafficAnalytics from '@/components/MLTrafficAnalytics.jsx';
+import SmartTrafficSimulation from '@/components/SmartTrafficSimulation.jsx';
+import WeatherAdaptiveControl from '@/components/WeatherAdaptiveControl.jsx';
 import { getInitialSignals } from '@/lib/signal-logic';
 
 function App() {
@@ -36,6 +46,8 @@ function App() {
   const [signals, setSignals] = useState(getInitialSignals());
   const [controlMode, setControlMode] = useState('automatic');
   const [mapType, setMapType] = useState('simulated'); // 'simulated' or 'live'
+  const [weather, setWeather] = useState({ condition: 'clear' });
+  const [emergencyDetections, setEmergencyDetections] = useState([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,30 +78,89 @@ function App() {
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
     { id: 'map', label: 'Traffic Map', icon: MapPin },
+    { id: 'smart-simulation', label: 'Smart Simulation', icon: Zap },
     { id: 'live-map', label: 'Google Maps', icon: Navigation },
     { id: 'free-map', label: 'OpenStreet Map', icon: MapPin },
     { id: 'detection', label: 'AI Detection', icon: Eye },
+    { id: 'camera-detection', label: 'Camera AI', icon: Camera },
     { id: 'signals', label: 'Signal Control', icon: Radio },
+    { id: 'weather-control', label: 'Weather Control', icon: Cloud },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'ml-analytics', label: 'ML Analytics', icon: Brain },
     { id: 'admin', label: 'Admin Panel', icon: Settings }
   ];
 
   const renderActiveComponent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard emergencyActive={emergencyActive} isMonitoring={isMonitoring} />;
+        return (
+          <div className="space-y-6">
+            <Dashboard 
+              emergencyActive={emergencyActive} 
+              isMonitoring={isMonitoring}
+              connectedIntersections={connectedIntersections}
+              detectedVehicles={detectedVehicles}
+              signals={signals}
+              weather={weather}
+            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <CameraFeed 
+                onEmergencyDetected={(emergency) => {
+                  setEmergencyDetections(prev => [...prev, emergency]);
+                  setEmergencyActive(true);
+                  toast({
+                    title: "🚨 Emergency Vehicle Detected",
+                    description: `${emergency.type} detected via AI camera with ${emergency.confidence}% confidence`,
+                  });
+                }}
+              />
+              <WeatherIntegration 
+                onWeatherChange={(newWeather) => {
+                  setWeather(newWeather);
+                  if (newWeather.condition !== 'clear') {
+                    toast({
+                      title: "🌦️ Weather Alert",
+                      description: `Signal timing adjusted for ${newWeather.condition} conditions`,
+                    });
+                  }
+                }}
+              />
+            </div>
+          </div>
+        );
       case 'map':
         return <TrafficMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
+      case 'smart-simulation':
+        return <SmartTrafficSimulation emergencyActive={emergencyActive} onVehicleCountChange={setDetectedVehicles} />;
       case 'live-map':
         return <LiveGoogleMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
       case 'free-map':
         return <WorkingMapAlternative emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
       case 'detection':
         return <EmergencyDetection isMonitoring={isMonitoring} />;
+      case 'camera-detection':
+        return <CameraEmergencyDetection onEmergencyDetected={(detection) => {
+          setEmergencyActive(true);
+          toast({
+            title: `🚨 ${detection.type.toUpperCase()} DETECTED`,
+            description: `AI Camera Detection - Confidence: ${(detection.confidence * 100).toFixed(1)}%`,
+            className: "border-red-500 bg-red-500/10"
+          });
+          setTimeout(() => setEmergencyActive(false), 10000);
+        }} />;
       case 'signals':
         return <SignalControl emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} setSignals={setSignals} controlMode={controlMode} setControlMode={setControlMode} />;
+      case 'weather-control':
+        return <WeatherAdaptiveControl onWeatherChange={(weather) => {
+          // Update system based on weather conditions
+          if (weather.condition === 'heavy_rain' || weather.condition === 'snow') {
+            setControlMode('weather-adaptive');
+          }
+        }} />;
       case 'analytics':
         return <Analytics />;
+      case 'ml-analytics':
+        return <MLTrafficAnalytics />;
       case 'admin':
         return <AdminPanel />;
       default:
