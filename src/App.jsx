@@ -7,6 +7,7 @@ import {
   AlertTriangle, 
   Car, 
   Settings, 
+  Shield,
   Navigation,
   Radio,
   Eye,

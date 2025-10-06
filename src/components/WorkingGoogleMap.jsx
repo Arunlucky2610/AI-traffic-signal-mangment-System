@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, MapPin, Navigation, Wifi, ExternalLink, Zap } from 'lucide-react';
+import { AlertTriangle, MapPin, Navigation, Wifi, ExternalLink, Zap, Loader2 } from 'lucide-react';
 
 const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
   const mapRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiLoaded, setApiLoaded] = useState(false);
 
-  const API_KEY = 'AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs';
+  // Get API key from environment variables with fallback
+  const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs';
   
-  // Telangana traffic centers
+  // Hyderabad traffic centers (centered on Hyderabad, India as requested)
   const trafficCenters = [
     { lat: 17.3850, lng: 78.4867, name: 'HITEC City', severity: 'high', incidents: 4 },
     { lat: 17.4065, lng: 78.4772, name: 'Banjara Hills', severity: 'medium', incidents: 2 },
@@ -17,6 +19,9 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
     { lat: 17.3616, lng: 78.4747, name: 'Charminar Area', severity: 'medium', incidents: 2 },
     { lat: 17.4126, lng: 78.4392, name: 'Ameerpet', severity: 'high', incidents: 5 }
   ];
+
+  // Hyderabad center coordinates
+  const HYDERABAD_CENTER = { lat: 17.3850, lng: 78.4867 };
 
   const [selectedLocation, setSelectedLocation] = useState(0);
   const [incidents] = useState([
@@ -29,22 +34,30 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
     let mounted = true;
 
     const initializeMap = () => {
-      if (!mounted) return;
+      if (!mounted || !mapRef.current) return;
 
       console.log('🗺️ Initializing Google Maps...');
+      console.log('📍 API Key Status:', API_KEY ? '✅ Loaded' : '❌ Missing');
       
       try {
-        const center = trafficCenters[selectedLocation];
+        // Use Hyderabad center as requested
+        const center = trafficCenters[selectedLocation] || HYDERABAD_CENTER;
         
         const map = new window.google.maps.Map(mapRef.current, {
-          zoom: 13,
+          zoom: 12,
           center: { lat: center.lat, lng: center.lng },
+          mapTypeId: window.google.maps.MapTypeId.ROADMAP,
           styles: [
             { featureType: 'all', elementType: 'geometry.fill', stylers: [{ color: '#1a1a1a' }] },
             { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d3748' }] },
             { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
             { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#1e40af' }] }
-          ]
+          ],
+          // Fixed height and width as requested
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true,
+          zoomControl: true
         });
 
         // Add traffic layer
@@ -73,7 +86,9 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
         if (mounted) {
           setMapLoaded(true);
           setIsLoading(false);
+          setApiLoaded(true);
           console.log('✅ Google Maps loaded successfully');
+          console.log('🎯 Map centered on Hyderabad, India');
         }
 
       } catch (err) {
@@ -88,31 +103,41 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
     const loadGoogleMapsAPI = () => {
       if (window.google && window.google.maps) {
         console.log('✅ Google Maps API already loaded');
-        initializeMap();
+        setApiLoaded(true);
+        setTimeout(initializeMap, 100); // Small delay to ensure DOM is ready
+        return;
+      }
+
+      if (!API_KEY) {
+        console.error('❌ Google Maps API key is missing');
+        setError('Google Maps API key is missing. Please check your .env configuration.');
+        setIsLoading(false);
         return;
       }
 
       console.log('📜 Loading Google Maps API...');
+      console.log('🔑 Using API Key:', `${API_KEY.substring(0, 20)}...`);
       
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,geometry`;
       script.async = true;
       script.defer = true;
 
       script.onload = () => {
         console.log('✅ Google Maps API script loaded');
-        initializeMap();
+        setApiLoaded(true);
+        setTimeout(initializeMap, 100);
       };
 
       script.onerror = () => {
-        console.error('❌ Failed to load Google Maps API');
+        console.error('❌ Failed to load Google Maps API script');
         if (mounted) {
-          setError('Failed to load Google Maps API. Please check your internet connection and API key.');
+          setError('Failed to load Google Maps API. Please check your internet connection and API key validity.');
           setIsLoading(false);
         }
       };
 
-      // Handle authentication errors
+      // Handle authentication errors globally
       window.gm_authFailure = () => {
         console.error('❌ Google Maps authentication failed');
         if (mounted) {
@@ -121,24 +146,31 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
         }
       };
 
+      // Remove any existing Google Maps scripts to prevent conflicts
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+
       document.head.appendChild(script);
     };
 
-    // Start loading
-    setTimeout(loadGoogleMapsAPI, 100);
+    // Start loading Google Maps API
+    const loadTimer = setTimeout(loadGoogleMapsAPI, 100);
     
-    // Auto-skip loading after 5 seconds
-    const autoSkipTimer = setTimeout(() => {
-      if (mounted && isLoading) {
-        console.warn('Auto-skipping Google Maps loading after 5 seconds');
+    // Prevent infinite loading - fallback after 10 seconds
+    const timeoutTimer = setTimeout(() => {
+      if (mounted && isLoading && !apiLoaded) {
+        console.warn('⚠️ Google Maps loading timeout - showing fallback');
         setIsLoading(false);
-        setMapLoaded(true);
+        setError('Maps loading timeout. Showing traffic dashboard instead.');
       }
-    }, 5000);
+    }, 10000);
 
     return () => {
       mounted = false;
-      clearTimeout(autoSkipTimer);
+      clearTimeout(loadTimer);
+      clearTimeout(timeoutTimer);
     };
   }, [selectedLocation]);
 
@@ -154,57 +186,93 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 relative mx-auto mb-4">
-            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <Navigation className="w-8 h-8 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 relative mx-auto mb-6">
+            <Loader2 className="w-16 h-16 text-blue-400 animate-spin" />
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Loading Google Maps</h3>
-          <p className="text-gray-300">Initializing Telangana traffic monitoring...</p>
+          <h3 className="text-2xl font-bold text-white mb-4">Loading Google Maps</h3>
+          <p className="text-gray-300 mb-6">Initializing Hyderabad traffic monitoring system...</p>
           
-          {/* Auto-skip after 5 seconds */}
-          <div className="mt-6">
-            <button
-              onClick={() => {
-                setIsLoading(false);
-                setMapLoaded(true);
-              }}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              Continue to Dashboard
-            </button>
+          <div className="bg-black/30 rounded-lg p-4 mb-6 text-left">
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${API_KEY ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                <span className="text-gray-300">API Key: {API_KEY ? 'Configured' : 'Missing'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${apiLoaded ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
+                <span className="text-gray-300">Google Maps API: {apiLoaded ? 'Loaded' : 'Loading...'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                <span className="text-gray-300">Center: Hyderabad, India</span>
+              </div>
+            </div>
           </div>
+          
+          <button
+            onClick={() => {
+              setIsLoading(false);
+              setError('Switched to fallback mode');
+            }}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            Skip to Traffic Dashboard
+          </button>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !mapLoaded) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center p-8">
-        <div className="text-center max-w-md">
+        <div className="text-center max-w-2xl">
           <div className="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-red-400" />
           </div>
-          <h3 className="text-xl font-semibold text-white mb-3">Google Maps Error</h3>
+          <h3 className="text-xl font-semibold text-white mb-3">Maps Integration Issue</h3>
           <p className="text-gray-300 mb-6">{error}</p>
           
-          <div className="bg-black/30 border border-yellow-500/30 rounded-lg p-4 mb-6">
-            <h4 className="text-yellow-400 font-medium mb-2">Quick Fixes:</h4>
-            <div className="text-left text-sm space-y-2 text-gray-300">
-              <p>1. Check API key restrictions in Google Cloud Console</p>
-              <p>2. Add localhost to authorized domains</p>
-              <p>3. Enable Maps JavaScript API</p>
-              <p>4. Verify billing is enabled</p>
+          <div className="bg-black/30 border border-yellow-500/30 rounded-lg p-6 mb-6 text-left">
+            <h4 className="text-yellow-400 font-medium mb-4">Troubleshooting Steps:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+              <div>
+                <p>• Check Google Cloud Console API settings</p>
+                <p>• Verify API key restrictions</p>
+                <p>• Enable Maps JavaScript API</p>
+              </div>
+              <div>
+                <p>• Add localhost to authorized domains</p>
+                <p>• Ensure billing is enabled</p>
+                <p>• Check network connectivity</p>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-600/10 rounded border border-blue-500/30">
+              <p className="text-blue-300 text-sm">
+                <strong>Current API Key:</strong> {API_KEY ? `${API_KEY.substring(0, 20)}...` : 'Not configured'}
+              </p>
             </div>
           </div>
           
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
-          >
-            Retry Loading
-          </button>
+          <div className="flex space-x-4 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+            >
+              Retry Loading
+            </button>
+            <button
+              onClick={() => {
+                setError(null);
+                setMapLoaded(true);
+                setIsLoading(false);
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors"
+            >
+              Show Traffic Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -308,31 +376,45 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
           </div>
         </div>
 
-        {/* Google Maps */}
-        <div className="flex-1 relative">
-          {!error && mapLoaded ? (
-            <div ref={mapRef} className="w-full h-full" />
+        {/* Google Maps Container with Fixed Dimensions */}
+        <div className="flex-1 relative min-h-[calc(100vh-200px)]">
+          {mapLoaded && !error ? (
+            <div 
+              ref={mapRef} 
+              className="w-full h-full min-h-[500px]"
+              style={{ height: '100%', width: '100%' }}
+            />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-              <div className="text-center max-w-md">
+              <div className="text-center max-w-2xl p-8">
                 <Navigation className="w-20 h-20 text-blue-400 mx-auto mb-6" />
-                <h3 className="text-2xl font-bold text-white mb-4">Traffic Control Center</h3>
-                <p className="text-gray-300 mb-6">Monitoring Telangana traffic in real-time</p>
+                <h3 className="text-3xl font-bold text-white mb-4">Hyderabad Traffic Control</h3>
+                <p className="text-gray-300 mb-8">Real-time traffic monitoring system for Hyderabad, India</p>
                 
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-4 mb-8 max-w-lg mx-auto">
                   {trafficCenters.slice(0, 4).map((center, index) => (
-                    <div key={index} className="bg-black/30 rounded-lg p-4 border border-gray-600">
-                      <h4 className="font-medium text-white">{center.name}</h4>
-                      <p className="text-sm text-gray-400">{center.incidents} incidents</p>
-                      <div className={`w-3 h-3 rounded-full mt-2 ${
-                        center.severity === 'high' ? 'bg-red-400 animate-pulse' :
-                        center.severity === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
-                      }`}></div>
+                    <div key={index} className="bg-black/30 rounded-lg p-4 border border-gray-600 hover:border-blue-500/50 transition-colors">
+                      <h4 className="font-medium text-white mb-1">{center.name}</h4>
+                      <p className="text-sm text-gray-400 mb-2">{center.incidents} incidents</p>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          center.severity === 'high' ? 'bg-red-400 animate-pulse' :
+                          center.severity === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
+                        }`}></div>
+                        <span className="text-xs text-gray-500 capitalize">{center.severity}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
                 
-                <p className="text-sm text-gray-400">Google Maps integration ready • API configured</p>
+                <div className="bg-blue-600/10 border border-blue-500/30 rounded-lg p-4">
+                  <p className="text-blue-300">
+                    <strong>Google Maps Integration:</strong> {apiLoaded ? 'Ready' : 'Loading...'}
+                  </p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Center: Hyderabad, Telangana, India (17.3850°N, 78.4867°E)
+                  </p>
+                </div>
               </div>
             </div>
           )}
