@@ -1,0 +1,22 @@
+# Google Maps API Backend Service Requirements
+
+# Core Flask dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# Google API Client Libraries
+google-api-python-client==2.100.0
+google-auth==2.23.3
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+
+# Google Maps specific library
+googlemaps==4.10.0
+
+# Additional utilities
+requests==2.31.0
+python-dotenv==1.0.0
+
+# Development dependencies
+pytest==7.4.2
+pytest-flask==1.2.0
