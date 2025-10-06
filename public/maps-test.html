@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps API Test</title>
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+            background-color: #f0f0f0;
+            border: 2px solid #333;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .error { background-color: #ffebee; color: #c62828; }
+        .success { background-color: #e8f5e8; color: #2e7d32; }
+        .warning { background-color: #fff3e0; color: #ef6c00; }
+    </style>
+</head>
+<body>
+    <h1>🗺️ Google Maps API Diagnostic Test</h1>
+    
+    <div id="status" class="status warning">
+        🔍 Testing API key: AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs
+    </div>
+    
+    <div id="console-output" style="background: #000; color: #0f0; padding: 10px; margin: 10px 0; font-family: monospace; height: 200px; overflow-y: scroll;">
+        <div>🚀 Starting Google Maps API test...</div>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div style="margin-top: 20px;">
+        <button onclick="testAPIKey()">🔑 Test API Key</button>
+        <button onclick="loadMapDirectly()">🗺️ Load Map Direct</button>
+        <button onclick="checkRestrictions()">🔒 Check Restrictions</button>
+        <button onclick="clearConsole()">🧹 Clear Console</button>
+    </div>
+
+    <script>
+        const API_KEY = 'AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs';
+        const output = document.getElementById('console-output');
+        const status = document.getElementById('status');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#f44' : type === 'success' ? '#4f4' : type === 'warning' ? '#fa4' : '#0f0';
+            output.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+            
+            if (type === 'error') {
+                status.className = 'status error';
+                status.textContent = '❌ ' + message;
+            } else if (type === 'success') {
+                status.className = 'status success';
+                status.textContent = '✅ ' + message;
+            } else if (type === 'warning') {
+                status.className = 'status warning';
+                status.textContent = '⚠️ ' + message;
+            }
+        }
+        
+        function clearConsole() {
+            output.innerHTML = '<div>🧹 Console cleared</div>';
+        }
+        
+        function testAPIKey() {
+            log('Testing API key validity...', 'info');
+            
+            // Test with a simple geocoding request
+            const testUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=Hyderabad,India&key=${API_KEY}`;
+            
+            fetch(`https://cors-anywhere.herokuapp.com/${testUrl}`)
+                .then(response => response.json())
+                .then(data => {
+                    log(`API Response Status: ${data.status}`, data.status === 'OK' ? 'success' : 'error');
+                    if (data.status === 'OK') {
+                        log('✅ API key is valid and working!', 'success');
+                    } else {
+                        log(`❌ API Error: ${data.error_message || data.status}`, 'error');
+                        if (data.status === 'REQUEST_DENIED') {
+                            log('🔒 This usually means API key restrictions or billing issues', 'warning');
+                        }
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Network Error: ${error.message}`, 'error');
+                    log('💡 Trying direct JavaScript API test...', 'info');
+                    loadMapDirectly();
+                });
+        }
+        
+        function loadMapDirectly() {
+            log('Loading Google Maps JavaScript API...', 'info');
+            
+            // Remove existing script if any
+            const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+            if (existingScript) {
+                existingScript.remove();
+                log('Removed existing Maps API script', 'info');
+            }
+            
+            // Create new script
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,geometry&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            
+            // Add error handler
+            script.onerror = function() {
+                log('❌ Failed to load Google Maps JavaScript API', 'error');
+                log('🔍 Check if API key has JavaScript Maps API enabled', 'warning');
+            };
+            
+            // Define callback
+            window.initMap = function() {
+                log('✅ Google Maps API loaded successfully!', 'success');
+                
+                try {
+                    const map = new google.maps.Map(document.getElementById('map'), {
+                        zoom: 13,
+                        center: { lat: 17.3850, lng: 78.4867 }, // Hyderabad HITEC City
+                        mapTypeId: google.maps.MapTypeId.ROADMAP
+                    });
+                    
+                    log('✅ Map initialized successfully!', 'success');
+                    
+                    // Add a marker
+                    const marker = new google.maps.Marker({
+                        position: { lat: 17.3850, lng: 78.4867 },
+                        map: map,
+                        title: 'Hyderabad HITEC City - Test Location'
+                    });
+                    
+                    log('✅ Marker added successfully!', 'success');
+                    log('🎉 Google Maps is working perfectly!', 'success');
+                    
+                } catch (error) {
+                    log(`❌ Map initialization error: ${error.message}`, 'error');
+                }
+            };
+            
+            // Handle authentication errors
+            window.gm_authFailure = function() {
+                log('❌ Google Maps API authentication failed!', 'error');
+                log('🔑 Check your API key configuration', 'error');
+                log('🔒 Verify API key restrictions (domains, IPs, referrers)', 'warning');
+                log('💳 Check if billing is enabled for your Google Cloud project', 'warning');
+            };
+            
+            document.head.appendChild(script);
+            log('📜 Google Maps API script added to page', 'info');
+        }
+        
+        function checkRestrictions() {
+            log('🔍 Checking common API key restriction issues...', 'info');
+            
+            const currentDomain = window.location.hostname;
+            const currentPort = window.location.port;
+            const currentOrigin = window.location.origin;
+            
+            log(`🌐 Current domain: ${currentDomain}`, 'info');
+            log(`🔌 Current port: ${currentPort}`, 'info');
+            log(`🔗 Current origin: ${currentOrigin}`, 'info');
+            
+            log('📋 Common restriction fixes:', 'warning');
+            log('1. Add to authorized domains: localhost, 127.0.0.1', 'info');
+            log('2. Add to authorized referrers: http://localhost:*, https://localhost:*', 'info');
+            log('3. Enable required APIs: Maps JavaScript API, Places API, Geocoding API', 'info');
+            log('4. Check billing is enabled in Google Cloud Console', 'info');
+            log('5. Verify API key is not restricted to specific IPs', 'info');
+        }
+        
+        // Auto-start test
+        log('🚀 Page loaded, ready for testing', 'info');
+        log('💡 Click "Load Map Direct" to test Google Maps API', 'warning');
+    </script>
+</body>
+</html>
