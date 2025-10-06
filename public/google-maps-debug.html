@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .map-container { width: 100%; height: 400px; border: 2px solid #ccc; margin: 20px 0; }
+        .debug-info { background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background: #ffe6e6; border: 1px solid #ffcccc; }
+        .success { background: #e6ffe6; border: 1px solid #ccffcc; }
+        .warning { background: #fff8e1; border: 1px solid #ffecb3; }
+    </style>
+</head>
+<body>
+    <h1>🗺️ Google Maps API Debug Test</h1>
+    
+    <div class="debug-info" id="debug-info">
+        <h3>🔍 Debug Information</h3>
+        <p><strong>API Key:</strong> <span id="api-key-status">Checking...</span></p>
+        <p><strong>Script Load:</strong> <span id="script-status">Waiting...</span></p>
+        <p><strong>Google Object:</strong> <span id="google-status">Checking...</span></p>
+        <p><strong>Map Creation:</strong> <span id="map-status">Waiting...</span></p>
+    </div>
+    
+    <div id="map" class="map-container"></div>
+    
+    <div class="debug-info">
+        <h3>📋 Console Logs</h3>
+        <div id="logs" style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;"></div>
+    </div>
+
+    <script>
+        const apiKey = 'AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs';
+        
+        // Log function
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : type === 'warning' ? 'orange' : 'blue';
+            logs.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(id, message, type = 'info') {
+            const element = document.getElementById(id);
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : type === 'warning' ? 'orange' : 'blue';
+            element.innerHTML = `<span style="color: ${color}">${message}</span>`;
+        }
+
+        // Check API key
+        addLog('🔑 Checking API key...');
+        if (!apiKey || apiKey.includes('your_google_maps_api_key_here')) {
+            updateStatus('api-key-status', '❌ Invalid API key', 'error');
+            addLog('❌ API key is invalid or missing', 'error');
+        } else {
+            updateStatus('api-key-status', `✅ Valid (${apiKey.substring(0, 10)}...)`, 'success');
+            addLog(`✅ API key appears valid: ${apiKey.substring(0, 10)}...`, 'success');
+        }
+
+        // Global error handler for authentication failures
+        window.gm_authFailure = function() {
+            updateStatus('script-status', '❌ Authentication failed', 'error');
+            addLog('❌ Google Maps authentication failed - API key restrictions or billing issue', 'error');
+        };
+
+        // Initialize map function
+        function initMap() {
+            addLog('🚀 initMap callback triggered', 'success');
+            updateStatus('map-status', '⏳ Creating map...', 'warning');
+            
+            try {
+                if (!window.google || !window.google.maps) {
+                    throw new Error('Google Maps API not available');
+                }
+                
+                updateStatus('google-status', '✅ Available', 'success');
+                addLog('✅ Google Maps API object is available', 'success');
+                
+                const map = new window.google.maps.Map(document.getElementById('map'), {
+                    center: { lat: 17.3850, lng: 78.4867 }, // Hyderabad
+                    zoom: 13,
+                });
+                
+                // Add a marker
+                new window.google.maps.Marker({
+                    position: { lat: 17.3850, lng: 78.4867 },
+                    map: map,
+                    title: 'Hyderabad - HITEC City'
+                });
+                
+                updateStatus('map-status', '✅ Map created successfully!', 'success');
+                addLog('🎉 Google Maps created successfully with marker!', 'success');
+                
+            } catch (error) {
+                updateStatus('map-status', `❌ Failed: ${error.message}`, 'error');
+                addLog(`❌ Map creation failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Load Google Maps API
+        addLog('📜 Loading Google Maps API script...');
+        updateStatus('script-status', '⏳ Loading...', 'warning');
+        
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+        script.async = true;
+        script.defer = true;
+        
+        script.onload = function() {
+            updateStatus('script-status', '✅ Script loaded', 'success');
+            addLog('✅ Google Maps API script loaded successfully', 'success');
+        };
+        
+        script.onerror = function() {
+            updateStatus('script-status', '❌ Script failed to load', 'error');
+            addLog('❌ Failed to load Google Maps API script', 'error');
+        };
+        
+        document.head.appendChild(script);
+        
+        // Timeout check
+        setTimeout(() => {
+            if (!window.google || !window.google.maps) {
+                addLog('⏰ Timeout: Google Maps API did not load within 10 seconds', 'error');
+                updateStatus('google-status', '❌ Timeout', 'error');
+            }
+        }, 10000);
+
+        addLog('🎯 Debug test initialized. Check the map above and console for details.');
+    </script>
+</body>
+</html>

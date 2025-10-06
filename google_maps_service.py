@@ -7,12 +7,21 @@ import requests
 import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
 # Configuration
 GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY', 'YOUR_API_KEY_HERE')
+print(f"🔑 API Key loaded: {GOOGLE_MAPS_API_KEY[:10]}..." if GOOGLE_MAPS_API_KEY != 'YOUR_API_KEY_HERE' else "❌ API Key not found")
+
+if GOOGLE_MAPS_API_KEY == 'YOUR_API_KEY_HERE':
+    print("⚠️  Warning: Using placeholder API key. Please configure GOOGLE_MAPS_API_KEY in .env file")
+    
 gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
 # Telangana Traffic Centers

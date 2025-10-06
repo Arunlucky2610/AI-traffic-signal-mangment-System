@@ -114,30 +114,47 @@ const LiveGoogleMap = ({ emergencyActive, isMonitoring, signals }) => {
   // Check API key configuration
   const checkApiKey = () => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    console.log('🔍 Checking API key configuration...');
+    console.log(`API key from env: ${apiKey ? apiKey.substring(0, 10) + '...' : 'undefined'}`);
+    
     if (!apiKey || apiKey === 'your_google_maps_api_key_here' || apiKey === 'YOUR_API_KEY_HERE') {
+      console.log('❌ API key is missing or using placeholder');
       setApiKeyStatus('missing');
       setMapError('Google Maps API key not configured. Please check your .env file.');
       return false;
     }
+    
+    if (apiKey.length < 30) {
+      console.log('❌ API key appears to be too short');
+      setApiKeyStatus('invalid');
+      setMapError('Google Maps API key appears to be invalid (too short).');
+      return false;
+    }
+    
+    console.log('✅ API key appears valid');
     setApiKeyStatus('configured');
     return true;
   };
 
   // Initialize Google Maps JavaScript API
   const initializeGoogleMaps = () => {
+    console.log('🗺️ Initializing Google Maps...');
     const center = trafficCenters[selectedLocation];
     
     if (!window.google || !window.google.maps) {
-      console.log('Google Maps API not loaded yet');
+      console.error('❌ Google Maps API not available on window object');
       setMapError('Google Maps API failed to load. Please check your internet connection and API key.');
       return;
     }
+    
+    console.log('✅ Google Maps API available, creating map...');
 
     try {
       const mapOptions = {
         zoom: 14,
         center: { lat: center.lat, lng: center.lng },
         mapTypeId: window.google.maps.MapTypeId.ROADMAP,
+        mapId: 'DEMO_MAP_ID', // This helps with newer Maps API
         styles: [
           {
             featureType: 'all',
@@ -162,16 +179,25 @@ const LiveGoogleMap = ({ emergencyActive, isMonitoring, signals }) => {
         ]
       };
       
+      console.log(`📍 Map center: ${center.lat}, ${center.lng}`);
+      
       if (mapRef.current && !googleMapRef.current) {
+        console.log('📦 Creating new Google Maps instance...');
+        console.log('🎯 Map container element:', mapRef.current);
+        
         googleMapRef.current = new window.google.maps.Map(mapRef.current, mapOptions);
+        console.log('✅ Google Maps instance created successfully');
         
         // Add traffic layer
+        console.log('🚦 Adding traffic layer...');
         const trafficLayer = new window.google.maps.TrafficLayer();
         if (showTraffic) {
           trafficLayer.setMap(googleMapRef.current);
+          console.log('✅ Traffic layer added');
         }
         
         // Add marker for current location
+        console.log('📍 Adding location marker...');
         new window.google.maps.Marker({
           position: { lat: center.lat, lng: center.lng },
           map: googleMapRef.current,
@@ -186,15 +212,19 @@ const LiveGoogleMap = ({ emergencyActive, isMonitoring, signals }) => {
             scaledSize: new window.google.maps.Size(40, 40)
           }
         });
+        console.log('✅ Location marker added');
         
         setIsGoogleMapsLoaded(true);
         setMapError(null);
+        console.log('🎉 Google Maps initialization complete!');
       } else if (googleMapRef.current) {
-        // Update existing map
+        console.log('🔄 Updating existing map center...');
         googleMapRef.current.setCenter({ lat: center.lat, lng: center.lng });
+      } else {
+        console.log('⚠️ Map container not ready yet');
       }
     } catch (error) {
-      console.error('Google Maps initialization error:', error);
+      console.error('❌ Google Maps initialization error:', error);
       setMapError(`Failed to initialize Google Maps: ${error.message}`);
       setIsGoogleMapsLoaded(false);
     }
@@ -202,31 +232,46 @@ const LiveGoogleMap = ({ emergencyActive, isMonitoring, signals }) => {
 
   // Load Google Maps API script
   const loadGoogleMapsAPI = () => {
+    console.log('🗺️ Starting Google Maps API loading process...');
+    
     if (!checkApiKey()) {
+      console.log('❌ API key check failed');
       return;
     }
+    
+    console.log('✅ API key check passed');
 
     if (window.google && window.google.maps) {
+      console.log('✅ Google Maps API already loaded, initializing...');
       initializeGoogleMaps();
       return;
     }
     
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    console.log(`🔑 Loading Google Maps API with key: ${apiKey.substring(0, 10)}...`);
+    
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=initMap`;
     script.async = true;
     script.defer = true;
     
     // Handle script loading errors
-    script.onerror = () => {
+    script.onerror = (error) => {
+      console.error('❌ Script loading error:', error);
       setMapError('Failed to load Google Maps API. Please check your API key and internet connection.');
       setIsGoogleMapsLoaded(false);
     };
     
+    script.onload = () => {
+      console.log('✅ Google Maps script loaded successfully');
+    };
+    
     window.initMap = () => {
+      console.log('🚀 initMap callback triggered');
       try {
         initializeGoogleMaps();
       } catch (error) {
+        console.error('❌ Map initialization error:', error);
         setMapError(`Google Maps initialization failed: ${error.message}`);
         setIsGoogleMapsLoaded(false);
       }
@@ -234,11 +279,22 @@ const LiveGoogleMap = ({ emergencyActive, isMonitoring, signals }) => {
     
     // Handle API key errors
     window.gm_authFailure = () => {
-      setMapError('Google Maps API authentication failed. Please check your API key configuration.');
+      console.error('❌ Google Maps authentication failure');
+      setMapError('Google Maps API authentication failed. Please check your API key configuration and restrictions.');
       setApiKeyStatus('invalid');
       setIsGoogleMapsLoaded(false);
     };
     
+    // Add timeout to catch hanging loads
+    setTimeout(() => {
+      if (!window.google || !window.google.maps) {
+        console.error('⏰ Google Maps API loading timeout');
+        setMapError('Google Maps API loading timeout. Please check your internet connection and API key restrictions.');
+        setIsGoogleMapsLoaded(false);
+      }
+    }, 10000);
+    
+    console.log('📜 Adding Google Maps script to document head...');
     document.head.appendChild(script);
   };
 
