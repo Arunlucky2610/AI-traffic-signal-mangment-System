@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .test-box {
+            border: 2px solid #16213e;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background: #0f3460;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnostic Test</h1>
+    
+    <div class="test-box">
+        <h2>✅ Basic HTML/CSS</h2>
+        <p>If you can see this, HTML and CSS are working!</p>
+    </div>
+    
+    <div class="test-box">
+        <h2>📱 JavaScript Test</h2>
+        <button onclick="testJS()" id="js-test">Click to Test JavaScript</button>
+        <p id="js-result">JavaScript not tested yet</p>
+    </div>
+    
+    <div class="test-box">
+        <h2>🌐 Server Connection Test</h2>
+        <button onclick="testBackend()" id="backend-test">Test Backend Connection</button>
+        <p id="backend-result">Backend not tested yet</p>
+    </div>
+    
+    <div class="test-box">
+        <h2>📋 Next Steps</h2>
+        <p>If all tests pass, the main React app should work.</p>
+        <p><strong>Main App:</strong> <a href="http://localhost:5174" style="color: #4CAF50;">http://localhost:5174</a></p>
+        <p><strong>Backend:</strong> <a href="http://localhost:5000" style="color: #2196F3;">http://localhost:5000</a></p>
+    </div>
+
+    <script>
+        function testJS() {
+            document.getElementById('js-result').innerHTML = '✅ JavaScript is working!';
+            document.getElementById('js-test').style.background = '#4CAF50';
+        }
+        
+        async function testBackend() {
+            try {
+                const response = await fetch('http://localhost:5000');
+                if (response.ok) {
+                    document.getElementById('backend-result').innerHTML = '✅ Backend connection successful!';
+                    document.getElementById('backend-test').style.background = '#4CAF50';
+                } else {
+                    document.getElementById('backend-result').innerHTML = '⚠️ Backend responded but with error code: ' + response.status;
+                }
+            } catch (error) {
+                document.getElementById('backend-result').innerHTML = '❌ Backend connection failed: ' + error.message;
+                document.getElementById('backend-test').style.background = '#f44336';
+            }
+        }
+        
+        // Auto-run basic tests
+        setTimeout(() => {
+            console.log('🔍 Diagnostic page loaded successfully');
+        }, 1000);
+    </script>
+</body>
+</html>
