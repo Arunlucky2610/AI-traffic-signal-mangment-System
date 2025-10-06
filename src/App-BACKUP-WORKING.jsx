@@ -12,8 +12,7 @@ import {
   Navigation,
   Radio,
   Eye,
-  BarChart3,
-  Globe
+  BarChart3
 } from 'lucide-react';
 import { Toaster } from './components/ui/toaster.jsx';
 import { useToast } from './components/ui/use-toast.js';
@@ -21,7 +20,6 @@ import Dashboard from './components/Dashboard.jsx';
 import TrafficMap from './components/TrafficMap.jsx';
 import LiveGoogleMap from './components/LiveGoogleMap.jsx';
 import WorkingMapAlternative from './components/WorkingMapAlternative.jsx';
-import IndianLiveTrafficMap from './components/IndianLiveTrafficMap.jsx';
 import EmergencyDetection from './components/EmergencyDetection.jsx';
 import SignalControl from './components/signal-control/SignalControl.jsx';
 import Analytics from './components/analytics/Analytics.jsx';
@@ -65,25 +63,9 @@ function App() {
     return () => clearInterval(interval);
   }, [isMonitoring, toast, emergencyActive]);
 
-  // Listen for revert event from Indian Live Traffic Map
-  useEffect(() => {
-    const handleRevert = () => {
-      setActiveTab('map'); // Switch back to original traffic map
-      toast({
-        title: "🔄 Reverted to Original",
-        description: "Switched back to the original traffic map",
-        className: "border-blue-500 bg-blue-500/10"
-      });
-    };
-
-    window.addEventListener('revert-to-original', handleRevert);
-    return () => window.removeEventListener('revert-to-original', handleRevert);
-  }, [toast]);
-
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
     { id: 'map', label: 'Traffic Map', icon: MapPin },
-    { id: 'indian-live-map', label: '🇮🇳 India Live Traffic', icon: Globe },
     { id: 'live-map', label: 'Google Maps', icon: Navigation },
     { id: 'free-map', label: 'OpenStreet Map', icon: MapPin },
     { id: 'detection', label: 'AI Detection', icon: Eye },
@@ -98,8 +80,6 @@ function App() {
         return <Dashboard emergencyActive={emergencyActive} isMonitoring={isMonitoring} />;
       case 'map':
         return <TrafficMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
-      case 'indian-live-map':
-        return <IndianLiveTrafficMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} />;
       case 'live-map':
         return <LiveGoogleMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
       case 'free-map':
