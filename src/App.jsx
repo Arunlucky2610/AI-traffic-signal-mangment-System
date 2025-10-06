@@ -6,9 +6,7 @@ import {
   Activity, 
   AlertTriangle, 
   Car, 
-  MapPin, 
   Settings, 
-  Shield, 
   Navigation,
   Radio,
   Eye,
@@ -17,9 +15,7 @@ import {
 import { Toaster } from './components/ui/toaster.jsx';
 import { useToast } from './components/ui/use-toast.js';
 import Dashboard from './components/Dashboard.jsx';
-import TrafficMap from './components/TrafficMap.jsx';
-import LiveGoogleMap from './components/LiveGoogleMap.jsx';
-import WorkingMapAlternative from './components/WorkingMapAlternative.jsx';
+import WorkingGoogleMap from './components/WorkingGoogleMap.jsx';
 import EmergencyDetection from './components/EmergencyDetection.jsx';
 import SignalControl from './components/signal-control/SignalControl.jsx';
 import Analytics from './components/analytics/Analytics.jsx';
@@ -35,7 +31,6 @@ function App() {
   const [detectedVehicles, setDetectedVehicles] = useState(0);
   const [signals, setSignals] = useState(getInitialSignals());
   const [controlMode, setControlMode] = useState('automatic');
-  const [mapType, setMapType] = useState('simulated'); // 'simulated' or 'live'
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,9 +60,7 @@ function App() {
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
-    { id: 'map', label: 'Traffic Map', icon: MapPin },
-    { id: 'live-map', label: 'Google Maps', icon: Navigation },
-    { id: 'free-map', label: 'OpenStreet Map', icon: MapPin },
+    { id: 'maps', label: 'Google Maps', icon: Navigation },
     { id: 'detection', label: 'AI Detection', icon: Eye },
     { id: 'signals', label: 'Signal Control', icon: Radio },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -78,12 +71,8 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard emergencyActive={emergencyActive} isMonitoring={isMonitoring} />;
-      case 'map':
-        return <TrafficMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
-      case 'live-map':
-        return <LiveGoogleMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
-      case 'free-map':
-        return <WorkingMapAlternative emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} />;
+      case 'maps':
+        return <WorkingGoogleMap emergencyActive={emergencyActive} isMonitoring={isMonitoring} />;
       case 'detection':
         return <EmergencyDetection isMonitoring={isMonitoring} />;
       case 'signals':
