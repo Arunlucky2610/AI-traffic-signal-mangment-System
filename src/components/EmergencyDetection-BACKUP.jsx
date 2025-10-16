@@ -40,12 +40,12 @@ const EmergencyDetection = ({ isMonitoring }) => {
       '/videos/Traffic on Highway in City l Free Stock Footage  No Copyright Videos  Creative Common ! - Video Gallery - No Copyright Footage (720p, h264).mp4'
     ];
     const feeds = [
-      { id: 1, name: 'Live Camera Feed - Main St', status: 'active', confidence: 99.5, lastDetection: 'Live', video: '/videos/live-camera-feed.mp4' },
-      { id: 2, name: 'Highway Traffic - Junction A', status: 'active', confidence: 96.2, lastDetection: 'Live', video: '/videos/highway-traffic-feed.mp4' },
-      { id: 3, name: 'Bangalore Traffic - Koramangala', status: 'active', confidence: 97.8, lastDetection: 'Live', video: '/videos/bangalore-traffic-feed.mp4' },
+      { id: 1, name: 'Main St & 1st Ave', status: 'active', confidence: 97.2, lastDetection: '2 min ago', video: videoFiles[0] },
+      { id: 2, name: 'Main St & 2nd Ave', status: 'active', confidence: 94.8, lastDetection: '5 min ago', video: videoFiles[1] },
+      { id: 3, name: 'Oak St & 3rd Ave', status: 'active', confidence: 99.1, lastDetection: '1 min ago', video: videoFiles[2] },
       { id: 4, name: 'Pine St & 4th Ave', status: 'maintenance', confidence: 0, lastDetection: 'N/A', video: videoFiles[3] },
-      { id: 5, name: 'Tambaram Road Traffic', status: 'active', confidence: 95.3, lastDetection: 'Live', video: '/videos/road-traffic-sound-feed.mp4' },
-      { id: 6, name: 'Hyderabad Heavy Traffic', status: 'active', confidence: 97.1, lastDetection: 'Live', video: '/videos/hyderabad-traffic-feed.mp4' }
+      { id: 5, name: 'Central Plaza', status: 'active', confidence: 96.5, lastDetection: '3 min ago', video: videoFiles[4] },
+      { id: 6, name: 'Hospital District', status: 'active', confidence: 98.9, lastDetection: '30 sec ago', video: videoFiles[5] }
     ];
     setCameraFeeds(feeds);
   }, []);

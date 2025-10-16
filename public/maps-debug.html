@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Maps Debug Test</title>
+    <style>
+        #map { height: 400px; width: 100%; }
+        .debug { 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #f0f0f0; 
+            border-left: 4px solid #007cba; 
+        }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+    </style>
+</head>
+<body>
+    <h1>Google Maps API Debug Test</h1>
+    
+    <div id="status" class="debug">
+        <h3>🔄 Loading Google Maps API...</h3>
+        <p>Testing API key: AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs</p>
+        <p>Origin: <span id="origin"></span></p>
+        <p>User Agent: <span id="userAgent"></span></p>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        document.getElementById('origin').textContent = window.location.origin;
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+
+        let statusDiv = document.getElementById('status');
+        
+        function updateStatus(message, type = 'debug') {
+            statusDiv.innerHTML = `<h3>${message}</h3>`;
+            statusDiv.className = `debug ${type}`;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Global error handler for Google Maps authentication
+        window.gm_authFailure = function() {
+            updateStatus(`
+                ❌ Google Maps Authentication Failed
+                <br>Possible causes:
+                <br>• API key is not valid or has expired
+                <br>• Billing is not enabled on your Google Cloud account
+                <br>• Maps JavaScript API is not enabled
+                <br>• Domain restriction: ${window.location.origin} is not authorized
+                <br><br><strong>Fix:</strong> Add this domain to your API key restrictions in Google Cloud Console
+            `, 'error');
+        };
+
+        function initMap() {
+            updateStatus('✅ Google Maps API loaded successfully! Initializing map...', 'success');
+            
+            try {
+                const map = new google.maps.Map(document.getElementById('map'), {
+                    zoom: 13,
+                    center: { lat: 17.3850, lng: 78.4867 }, // Hyderabad
+                    mapTypeId: google.maps.MapTypeId.ROADMAP
+                });
+
+                // Add a marker
+                new google.maps.Marker({
+                    position: { lat: 17.3850, lng: 78.4867 },
+                    map: map,
+                    title: 'Hyderabad, India'
+                });
+
+                updateStatus('🗺️ Google Maps initialized successfully with marker!', 'success');
+            } catch (error) {
+                updateStatus(`❌ Map initialization error: ${error.message}`, 'error');
+            }
+        }
+
+        // Set timeout to detect loading issues
+        setTimeout(() => {
+            if (!window.google || !window.google.maps) {
+                updateStatus(`
+                    ⏰ Timeout: Google Maps API not loaded after 10 seconds
+                    <br>This usually indicates:
+                    <br>• Network connectivity issues
+                    <br>• API key restrictions (most common)
+                    <br>• Google Maps service unavailable
+                    <br><br><strong>Next step:</strong> Check browser console for detailed error messages
+                `, 'error');
+            }
+        }, 10000);
+
+        updateStatus('🔄 Loading Google Maps JavaScript API...', 'debug');
+    </script>
+
+    <!-- Load Google Maps API -->
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs&callback=initMap&libraries=places">
+    </script>
+</body>
+</html>

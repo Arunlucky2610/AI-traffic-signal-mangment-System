@@ -4,21 +4,45 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Play, Pause, RotateCcw } from 'lucide-react';
 
-const Sidebar = ({ navigationItems, activeTab, setActiveTab, isMonitoring, setIsMonitoring }) => {
+const Sidebar = ({ 
+  navigationItems, 
+  activeTab, 
+  setActiveTab, 
+  isMonitoring, 
+  setIsMonitoring, 
+  onResetSignals, 
+  signals,
+  setSignals 
+}) => {
   const { toast } = useToast();
 
   const handleStartMonitoring = () => {
     setIsMonitoring(true);
-    toast({ title: "System Monitoring Started", description: "Real-time traffic analysis is now active." });
+    toast({ 
+      title: "✅ System Monitoring Started", 
+      description: "Real-time traffic analysis is now active. All signals are being monitored.",
+      className: "border-green-500 bg-green-500/10"
+    });
   };
 
   const handlePauseSystem = () => {
     setIsMonitoring(false);
-    toast({ title: "System Monitoring Paused", description: "Real-time analysis is temporarily stopped.", variant: "destructive" });
+    toast({ 
+      title: "⏸️ System Monitoring Paused", 
+      description: "Real-time analysis is temporarily stopped. Signals will maintain current state.",
+      variant: "destructive"
+    });
   };
 
   const handleResetSignals = () => {
-    toast({ title: "Signal Reset Initiated", description: "All signals are returning to default patterns." });
+    if (onResetSignals) {
+      onResetSignals();
+    }
+    toast({ 
+      title: "🔄 Signal Reset Complete", 
+      description: `All ${signals?.length || 12} signals have been reset to default patterns.`,
+      className: "border-blue-500 bg-blue-500/10"
+    });
   };
   
   return (

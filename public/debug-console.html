@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Debug Console</title>
+    <style>
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: #1a1a1a; 
+            color: #00ff00; 
+            padding: 20px; 
+        }
+        .console-box { 
+            background: #000; 
+            border: 1px solid #333; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button { 
+            background: #333; 
+            color: #0f0; 
+            border: 1px solid #555; 
+            padding: 10px 20px; 
+            margin: 5px; 
+            cursor: pointer; 
+            border-radius: 3px;
+        }
+        button:hover { 
+            background: #555; 
+        }
+        #map { 
+            width: 100%; 
+            height: 300px; 
+            border: 2px solid #0f0; 
+            margin: 20px 0; 
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Google Maps Debug Console</h1>
+    
+    <div>
+        <button onclick="runDebug()">🔍 Run Full Debug</button>
+        <button onclick="forceReload()">🔄 Force Reload API</button>
+        <button onclick="testSimpleMap()">🗺️ Test Simple Map</button>
+        <button onclick="clearConsoleOutput()">🧹 Clear Console</button>
+    </div>
+    
+    <div class="console-box" id="console-output">
+        Console output will appear here...
+        
+        🔑 API Key: AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs
+        📍 Testing location: Hyderabad HITEC City (17.3850, 78.4867)
+        
+        Click "Run Full Debug" to start diagnosing the issue...
+    </div>
+    
+    <div id="map"></div>
+    
+    <script>
+        const API_KEY = 'AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs';
+        let consoleOutput = document.getElementById('console-output');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            consoleOutput.textContent += `\n[${timestamp}] ${message}`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearConsoleOutput() {
+            consoleOutput.textContent = 'Console cleared...\n';
+        }
+        
+        function runDebug() {
+            log('🔍 Starting Google Maps debug process...');
+            
+            // Check if API key is valid
+            log(`🔑 API Key: ${API_KEY.substring(0, 10)}...${API_KEY.substring(API_KEY.length - 4)}`);
+            log(`📏 API Key Length: ${API_KEY.length} characters`);
+            
+            // Check existing scripts
+            const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+            log(`📜 Found ${scripts.length} existing Google Maps scripts`);
+            
+            // Check global objects
+            log(`🌐 window.google exists: ${!!window.google}`);
+            log(`🗺️ window.google.maps exists: ${!!(window.google && window.google.maps)}`);
+            
+            // Test network connectivity
+            log('🌐 Testing network connectivity to Google Maps API...');
+            testNetworkConnectivity();
+        }
+        
+        function testNetworkConnectivity() {
+            const testUrl = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}`;
+            
+            fetch(testUrl, { mode: 'no-cors' })
+                .then(() => {
+                    log('✅ Network connectivity OK');
+                    log('💡 If maps still don\'t load, it\'s likely an API key restriction issue');
+                    loadGoogleMapsForTest();
+                })
+                .catch(error => {
+                    log(`❌ Network connectivity failed: ${error.message}`);
+                });
+        }
+        
+        function forceReload() {
+            log('🔄 Force reloading Google Maps API...');
+            
+            // Remove existing scripts
+            const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+            scripts.forEach(script => {
+                script.remove();
+                log('🗑️ Removed existing script');
+            });
+            
+            // Clear globals
+            if (window.google) {
+                delete window.google;
+                log('🧹 Cleared window.google');
+            }
+            
+            setTimeout(() => {
+                loadGoogleMapsForTest();
+            }, 1000);
+        }
+        
+        function loadGoogleMapsForTest() {
+            log('📜 Loading Google Maps JavaScript API...');
+            
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=initTestMap`;
+            script.async = true;
+            
+            script.onload = () => {
+                log('✅ Google Maps script loaded successfully');
+            };
+            
+            script.onerror = (error) => {
+                log('❌ Failed to load Google Maps script');
+                log('🔍 This could indicate:');
+                log('   - Invalid API key');
+                log('   - API key restrictions');
+                log('   - Network/firewall issues');
+                log('   - Billing not enabled');
+            };
+            
+            window.initTestMap = function() {
+                log('🎉 Google Maps API callback triggered!');
+                testSimpleMap();
+            };
+            
+            window.gm_authFailure = function() {
+                log('❌ AUTHENTICATION FAILURE!');
+                log('🔑 API Key authentication failed');
+                log('🔧 Possible fixes:');
+                log('   1. Check API key in Google Cloud Console');
+                log('   2. Enable Maps JavaScript API');
+                log('   3. Add localhost to authorized domains');
+                log('   4. Remove IP restrictions if any');
+                log('   5. Enable billing on Google Cloud project');
+            };
+            
+            document.head.appendChild(script);
+            log('📋 Script added to document');
+        }
+        
+        function testSimpleMap() {
+            log('🗺️ Testing map creation...');
+            
+            if (!window.google || !window.google.maps) {
+                log('❌ Google Maps API not loaded');
+                return;
+            }
+            
+            try {
+                const mapElement = document.getElementById('map');
+                
+                const map = new google.maps.Map(mapElement, {
+                    zoom: 13,
+                    center: { lat: 17.3850, lng: 78.4867 }, // Hyderabad HITEC City
+                    mapTypeId: google.maps.MapTypeId.ROADMAP
+                });
+                
+                log('✅ Map created successfully!');
+                
+                const marker = new google.maps.Marker({
+                    position: { lat: 17.3850, lng: 78.4867 },
+                    map: map,
+                    title: 'Hyderabad HITEC City - Test Location'
+                });
+                
+                log('✅ Marker added successfully!');
+                log('🎯 SUCCESS: Google Maps is working correctly!');
+                log('💡 The issue is likely in your React component, not the API key');
+                
+            } catch (error) {
+                log(`❌ Map creation failed: ${error.message}`);
+                log('🔍 This indicates a JavaScript API issue');
+            }
+        }
+        
+        // Auto-start
+        setTimeout(() => {
+            log('🚀 Debug console ready');
+            log('Click "Run Full Debug" to start testing...');
+        }, 500);
+    </script>
+</body>
+</html>
