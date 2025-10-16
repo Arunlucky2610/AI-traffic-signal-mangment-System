@@ -8,7 +8,7 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [apiLoaded, setApiLoaded] = useState(false);
 
-  // Get API key from environment variables with fallback
+  // Use the provided API key directly
   const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBMsd9I-opTwbD8Wg0YEnYmoB4WArIqSSs';
   
   // Hyderabad traffic centers (centered on Hyderabad, India as requested)
@@ -34,14 +34,19 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
     let mounted = true;
 
     const initializeMap = () => {
-      if (!mounted || !mapRef.current) return;
+      if (!mounted || !mapRef.current || !window.google?.maps) {
+        console.log('⚠️ Map initialization conditions not met');
+        return;
+      }
 
       console.log('🗺️ Initializing Google Maps...');
-      console.log('📍 API Key Status:', API_KEY ? '✅ Loaded' : '❌ Missing');
+      console.log('📍 API Key:', API_KEY.substring(0, 20) + '...');
+      console.log('🎯 Map Container:', mapRef.current);
       
       try {
         // Use Hyderabad center as requested
         const center = trafficCenters[selectedLocation] || HYDERABAD_CENTER;
+        console.log('📍 Center:', center);
         
         const map = new window.google.maps.Map(mapRef.current, {
           zoom: 12,
@@ -53,12 +58,13 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
             { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
             { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#1e40af' }] }
           ],
-          // Fixed height and width as requested
           mapTypeControl: true,
           streetViewControl: true,
           fullscreenControl: true,
           zoomControl: true
         });
+
+        console.log('✅ Map object created:', map);
 
         // Add traffic layer
         const trafficLayer = new window.google.maps.TrafficLayer();
@@ -83,13 +89,26 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
           });
         });
 
-        if (mounted) {
-          setMapLoaded(true);
-          setIsLoading(false);
-          setApiLoaded(true);
-          console.log('✅ Google Maps loaded successfully');
-          console.log('🎯 Map centered on Hyderabad, India');
-        }
+        // Wait for map to be fully loaded
+        window.google.maps.event.addListenerOnce(map, 'idle', () => {
+          if (mounted) {
+            setMapLoaded(true);
+            setIsLoading(false);
+            setApiLoaded(true);
+            console.log('✅ Google Maps fully loaded and ready');
+            console.log('🎯 Map centered on Hyderabad, India');
+          }
+        });
+
+        // Also set as loaded after 1 second as backup
+        setTimeout(() => {
+          if (mounted) {
+            setMapLoaded(true);
+            setIsLoading(false);
+            setApiLoaded(true);
+            console.log('✅ Google Maps loaded (timeout backup)');
+          }
+        }, 1000);
 
       } catch (err) {
         console.error('❌ Map initialization error:', err);
@@ -104,36 +123,45 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
       if (window.google && window.google.maps) {
         console.log('✅ Google Maps API already loaded');
         setApiLoaded(true);
-        setTimeout(initializeMap, 100); // Small delay to ensure DOM is ready
+        setTimeout(initializeMap, 100);
         return;
       }
 
       if (!API_KEY) {
         console.error('❌ Google Maps API key is missing');
-        setError('Google Maps API key is missing. Please check your .env configuration.');
+        setError('Google Maps API key is missing. Please check your configuration.');
         setIsLoading(false);
         return;
       }
 
       console.log('📜 Loading Google Maps API...');
-      console.log('🔑 Using API Key:', `${API_KEY.substring(0, 20)}...`);
+      console.log('🔑 Using API Key:', API_KEY.substring(0, 20) + '...');
       
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,geometry`;
-      script.async = true;
-      script.defer = true;
-
-      script.onload = () => {
-        console.log('✅ Google Maps API script loaded');
-        setApiLoaded(true);
-        setTimeout(initializeMap, 100);
-      };
-
-      script.onerror = () => {
-        console.error('❌ Failed to load Google Maps API script');
-        if (mounted) {
-          setError('Failed to load Google Maps API. Please check your internet connection and API key validity.');
-          setIsLoading(false);
+      // Clean up any existing scripts and callbacks
+      const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      existingScripts.forEach(script => script.remove());
+      
+      // Clear existing callbacks
+      delete window.initGoogleMap;
+      delete window.gm_authFailure;
+      
+      // Set up global callback BEFORE creating script
+      window.initGoogleMap = () => {
+        console.log('✅ Google Maps API loaded via callback');
+        if (mounted && window.google && window.google.maps) {
+          setApiLoaded(true);
+          // Give a moment for everything to settle
+          setTimeout(() => {
+            if (mounted) {
+              initializeMap();
+            }
+          }, 200);
+        } else {
+          console.error('❌ Callback fired but Google Maps not available');
+          if (mounted) {
+            setError('Google Maps API callback failed. The API may not be properly loaded.');
+            setIsLoading(false);
+          }
         }
       };
 
@@ -141,31 +169,53 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
       window.gm_authFailure = () => {
         console.error('❌ Google Maps authentication failed');
         if (mounted) {
-          setError('Google Maps authentication failed. API key restrictions may be preventing access from this domain.');
+          setError('Google Maps authentication failed. Please check:\n• API key is valid and active\n• Billing is enabled on your Google Cloud account\n• Maps JavaScript API is enabled\n• This domain is authorized (add localhost:5173 to authorized domains)');
+          setIsLoading(false);
+        }
+      };
+      
+      const script = document.createElement('script');
+      // Use the API key with no domain restrictions and include callback
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,geometry,traffic&callback=initGoogleMap&v=3.56`;
+      script.async = true;
+      script.defer = true;
+
+      script.onload = () => {
+        console.log('✅ Google Maps API script loaded successfully');
+        // The callback will handle initialization
+      };
+
+      script.onerror = (error) => {
+        console.error('❌ Failed to load Google Maps API script:', error);
+        if (mounted) {
+          setError('Failed to load Google Maps API script. This could be due to:\n• Network connectivity issues\n• API key restrictions\n• Blocked by browser/firewall\n• Google Maps service is temporarily unavailable');
           setIsLoading(false);
         }
       };
 
-      // Remove any existing Google Maps scripts to prevent conflicts
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
-
       document.head.appendChild(script);
+      
+      // Fallback timeout in case callback never fires
+      setTimeout(() => {
+        if (mounted && !apiLoaded && window.google && window.google.maps) {
+          console.log('⚠️ Callback timeout - forcing initialization');
+          setApiLoaded(true);
+          initializeMap();
+        }
+      }, 3000);
     };
 
     // Start loading Google Maps API
     const loadTimer = setTimeout(loadGoogleMapsAPI, 100);
     
-    // Prevent infinite loading - fallback after 10 seconds
+    // Prevent infinite loading - fallback after 8 seconds
     const timeoutTimer = setTimeout(() => {
-      if (mounted && isLoading && !apiLoaded) {
+      if (mounted && isLoading) {
         console.warn('⚠️ Google Maps loading timeout - showing fallback');
         setIsLoading(false);
-        setError('Maps loading timeout. Showing traffic dashboard instead.');
+        setError('Maps loading timeout. This usually indicates:\n• API key restrictions (check Google Cloud Console)\n• Network connectivity issues\n• Domain not authorized for this API key\n\nPlease verify your Google Maps API configuration.');
       }
-    }, 10000);
+    }, 8000);
 
     return () => {
       mounted = false;
@@ -200,25 +250,47 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
                 <span className="text-gray-300">API Key: {API_KEY ? 'Configured' : 'Missing'}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${apiLoaded ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${apiLoaded ? 'bg-green-400' : 'bg-yellow-400 animate-pulse'}`}></div>
                 <span className="text-gray-300">Google Maps API: {apiLoaded ? 'Loaded' : 'Loading...'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${window.google?.maps ? 'bg-green-400' : 'bg-gray-500'}`}></div>
+                <span className="text-gray-300">Maps Library: {window.google?.maps ? 'Ready' : 'Waiting...'}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 rounded-full bg-blue-400"></div>
                 <span className="text-gray-300">Center: Hyderabad, India</span>
               </div>
             </div>
+            
+            {API_KEY && (
+              <div className="mt-3 p-2 bg-blue-600/10 rounded text-xs text-blue-300">
+                <strong>Tip:</strong> If loading takes too long, check that localhost:5173 is added to your API key's authorized domains in Google Cloud Console.
+              </div>
+            )}
           </div>
           
-          <button
-            onClick={() => {
-              setIsLoading(false);
-              setError('Switched to fallback mode');
-            }}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            Skip to Traffic Dashboard
-          </button>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => {
+                setIsLoading(false);
+                setMapLoaded(true);
+                setError(null);
+              }}
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+            >
+              Force Load Map
+            </button>
+            <button
+              onClick={() => {
+                setIsLoading(false);
+                setError('Switched to fallback mode');
+              }}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Skip to Traffic Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -235,23 +307,38 @@ const WorkingGoogleMap = ({ emergencyActive, isMonitoring }) => {
           <p className="text-gray-300 mb-6">{error}</p>
           
           <div className="bg-black/30 border border-yellow-500/30 rounded-lg p-6 mb-6 text-left">
-            <h4 className="text-yellow-400 font-medium mb-4">Troubleshooting Steps:</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-              <div>
-                <p>• Check Google Cloud Console API settings</p>
-                <p>• Verify API key restrictions</p>
-                <p>• Enable Maps JavaScript API</p>
+            <h4 className="text-yellow-400 font-medium mb-4">🔧 Google Cloud Console Configuration:</h4>
+            <div className="space-y-4 text-sm text-gray-300">
+              <div className="bg-red-600/10 border border-red-500/30 rounded p-3">
+                <h5 className="text-red-400 font-medium mb-2">1. API Key Restrictions (Most Common Issue)</h5>
+                <p>• Go to Google Cloud Console → APIs & Services → Credentials</p>
+                <p>• Edit your API key: <code className="text-blue-300">{API_KEY ? `${API_KEY.substring(0, 25)}...` : 'Not configured'}</code></p>
+                <p>• Under "Application restrictions" → Select "HTTP referrers"</p>
+                <p>• Add: <code className="text-green-400">localhost:5173/*</code></p>
+                <p>• Add: <code className="text-green-400">127.0.0.1:5173/*</code></p>
               </div>
-              <div>
-                <p>• Add localhost to authorized domains</p>
-                <p>• Ensure billing is enabled</p>
-                <p>• Check network connectivity</p>
+              
+              <div className="bg-blue-600/10 border border-blue-500/30 rounded p-3">
+                <h5 className="text-blue-400 font-medium mb-2">2. Enable Required APIs</h5>
+                <p>• Go to APIs & Services → Library</p>
+                <p>• Search and enable: <strong>"Maps JavaScript API"</strong></p>
+                <p>• Optional: Enable "Places API" and "Geocoding API"</p>
               </div>
-            </div>
-            <div className="mt-4 p-3 bg-blue-600/10 rounded border border-blue-500/30">
-              <p className="text-blue-300 text-sm">
-                <strong>Current API Key:</strong> {API_KEY ? `${API_KEY.substring(0, 20)}...` : 'Not configured'}
-              </p>
+              
+              <div className="bg-orange-600/10 border border-orange-500/30 rounded p-3">
+                <h5 className="text-orange-400 font-medium mb-2">3. Billing Account</h5>
+                <p>• Google Maps requires a valid billing account</p>
+                <p>• Go to Billing → Link a payment method</p>
+                <p>• Free tier includes $200/month credit</p>
+              </div>
+              
+              <div className="bg-green-600/10 border border-green-500/30 rounded p-3">
+                <h5 className="text-green-400 font-medium mb-2">4. Quick Test</h5>
+                <p>• Try this URL in browser after configuration:</p>
+                <p className="text-xs break-all text-blue-300">
+                  https://maps.googleapis.com/maps/api/js?key={API_KEY}&libraries=places
+                </p>
+              </div>
             </div>
           </div>
           

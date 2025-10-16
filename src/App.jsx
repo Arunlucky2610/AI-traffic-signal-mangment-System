@@ -32,7 +32,32 @@ function App() {
   const [detectedVehicles, setDetectedVehicles] = useState(0);
   const [signals, setSignals] = useState(getInitialSignals());
   const [controlMode, setControlMode] = useState('automatic');
+  const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const { toast } = useToast();
+
+  // Scroll handler for navbar hide/show
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY < 10) {
+        // Always show navbar when at top
+        setIsNavbarVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Hide navbar when scrolling down (after 100px)
+        setIsNavbarVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        // Show navbar when scrolling up
+        setIsNavbarVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   useEffect(() => {
     let interval;
@@ -68,6 +93,11 @@ function App() {
     { id: 'admin', label: 'Admin Panel', icon: Settings }
   ];
 
+  const handleResetSignals = () => {
+    setSignals(getInitialSignals());
+    setEmergencyActive(false);
+  };
+
   const renderActiveComponent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -77,7 +107,16 @@ function App() {
       case 'detection':
         return <EmergencyDetection isMonitoring={isMonitoring} />;
       case 'signals':
-        return <SignalControl emergencyActive={emergencyActive} isMonitoring={isMonitoring} signals={signals} setSignals={setSignals} controlMode={controlMode} setControlMode={setControlMode} />;
+        return <SignalControl 
+          emergencyActive={emergencyActive} 
+          setEmergencyActive={setEmergencyActive}
+          isMonitoring={isMonitoring} 
+          setIsMonitoring={setIsMonitoring}
+          signals={signals} 
+          setSignals={setSignals} 
+          controlMode={controlMode} 
+          setControlMode={setControlMode} 
+        />;
       case 'analytics':
         return <Analytics />;
       case 'admin':
@@ -95,7 +134,9 @@ function App() {
       </Helmet>
       
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
-        <header className="glass-effect border-b border-white/10 sticky top-0 z-50">
+        <header className={`bg-slate-900/95 border-b border-white/10 fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
+          isNavbarVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}>
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -143,13 +184,16 @@ function App() {
           </div>
         </header>
 
-        <div className="flex">
+        <div className="flex pt-20">
           <Sidebar 
             navigationItems={navigationItems}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             isMonitoring={isMonitoring}
             setIsMonitoring={setIsMonitoring}
+            onResetSignals={handleResetSignals}
+            signals={signals}
+            setSignals={setSignals}
           />
 
           <main className="flex-1 p-6">

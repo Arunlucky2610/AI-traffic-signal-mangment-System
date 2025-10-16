@@ -8,7 +8,16 @@ import SignalGrid from '@/components/signal-control/SignalGrid.jsx';
 import SignalControlPanel from '@/components/signal-control/SignalControlPanel.jsx';
 import { getInitialSignals, getNextSignalState } from '@/lib/signal-logic';
 
-const SignalControl = ({ emergencyActive, isMonitoring, signals, setSignals, controlMode, setControlMode }) => {
+const SignalControl = ({ 
+  emergencyActive, 
+  setEmergencyActive, 
+  isMonitoring, 
+  setIsMonitoring, 
+  signals, 
+  setSignals, 
+  controlMode, 
+  setControlMode 
+}) => {
   const { toast } = useToast();
  
   const resetAllSignals = useCallback(() => {
@@ -56,13 +65,47 @@ const SignalControl = ({ emergencyActive, isMonitoring, signals, setSignals, con
     }
   };
 
-  const handleSystemAction = (action) => {
+  const handleSystemAction = (signalId, action) => {
     switch(action) {
+      case 'emergency':
+        // Emergency mode is handled by the button itself now
+        if (emergencyActive) {
+          setSignals(prev => prev.map(signal => ({
+            ...signal,
+            mode: 'automatic',
+            emergency: false,
+            status: 'green',
+            timing: 30
+          })));
+        } else {
+          setSignals(prev => prev.map(signal => {
+            if ([1, 2, 3, 4].includes(signal.id)) {
+              return { ...signal, status: 'green', mode: 'emergency', timing: 120, emergency: true };
+            }
+            return { ...signal, status: 'red', mode: 'emergency', timing: 120, emergency: false };
+          }));
+        }
+        break;
+      case 'optimize':
+        // Optimize all signals for better traffic flow
+        setSignals(prev => prev.map(signal => ({
+          ...signal,
+          timing: Math.floor(Math.random() * 60) + 30, // Random optimized timing 30-90s
+          mode: 'optimized'
+        })));
+        break;
+      case 'pause':
+        // Pause/resume is handled by the button itself now
+        setSignals(prev => prev.map(s => ({ 
+          ...s, 
+          timing: isMonitoring ? 'N/A' : (s.timing === 'N/A' ? 30 : s.timing)
+        })));
+        break;
       case 'reset':
         resetAllSignals();
         break;
       default:
-        toast({ title: "🚧 This feature isn't implemented yet—but don't worry! You can request it in your next prompt! 🚀" });
+        toast({ title: "🚧 Action not recognized", description: `The action "${action}" is not implemented.` });
     }
   };
   
@@ -78,7 +121,14 @@ const SignalControl = ({ emergencyActive, isMonitoring, signals, setSignals, con
       {emergencyActive && <EmergencyOverrideAlert />}
       <SignalStats isMonitoring={isMonitoring}/>
       <SignalGrid signals={signals} onControl={handleSignalControl} controlMode={controlMode} isMonitoring={isMonitoring} />
-      <SignalControlPanel onControl={handleSystemAction} />
+      <SignalControlPanel 
+        onControl={handleSystemAction} 
+        emergencyActive={emergencyActive}
+        setEmergencyActive={setEmergencyActive}
+        isMonitoring={isMonitoring}
+        setIsMonitoring={setIsMonitoring}
+        signals={signals}
+      />
     </div>
   );
 };
